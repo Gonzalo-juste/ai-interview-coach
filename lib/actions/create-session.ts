@@ -20,14 +20,16 @@ export async function createSession(
     error: authError,
   } = await supabase.auth.getUser();
 
+  // Return a visible error rather than redirecting — /login may not exist yet
+  // and the old redirect() call was being swallowed by the try/catch below.
   if (authError || !user) {
-    redirect("/login");
+    return { error: "You must be signed in to create a session. Please log in at /login." };
   }
 
   const jdText = (formData.get("jd_text") as string | null)?.trim() ?? "";
   const cvText = (formData.get("cv_text") as string | null)?.trim() ?? "";
   const companyName = (formData.get("company_name") as string | null)?.trim() ?? "";
-  const archetype = (formData.get("difficulty_archetype") as DifficultyArchetype | null);
+  const archetype = formData.get("difficulty_archetype") as DifficultyArchetype | null;
 
   if (!jdText || !cvText || !companyName || !archetype) {
     return { error: "All fields are required." };
@@ -37,8 +39,10 @@ export async function createSession(
     return { error: "Invalid difficulty archetype." };
   }
 
+  let sessionId: string;
+
   try {
-    // Check company research cache across all sessions (requires admin client to bypass RLS)
+    // Check company research cache across all sessions (admin client bypasses RLS)
     const admin = createAdminClient();
     const { data: cached } = await admin
       .from("sessions")
@@ -49,7 +53,6 @@ export async function createSession(
       .limit(1)
       .maybeSingle();
 
-    // Run JD/CV extraction and company research in parallel
     const [extraction, companyResearch] = await Promise.all([
       extractJdCv(jdText, cvText),
       cached?.company_research
@@ -74,21 +77,23 @@ export async function createSession(
       .single();
 
     if (insertError || !session) {
-      console.error("Session insert error:", insertError);
-      return { error: "Failed to save session. Please try again." };
+      console.error("[createSession] insert error:", insertError);
+      return {
+        error: `Failed to save session: ${insertError?.message ?? "unknown error"}. Check server logs.`,
+      };
     }
 
-    redirect(`/sessions/${session.id}`);
+    sessionId = session.id;
   } catch (err) {
-    // redirect() throws internally — re-throw it so Next.js handles navigation
-    if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
-
-    console.error("createSession error:", err);
+    // redirect() is now called OUTSIDE the try/catch, so only real errors land here.
+    console.error("[createSession] unexpected error:", err);
     return {
-      error:
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again.",
+      error: err instanceof Error ? err.message : "Something went wrong. Please try again.",
     };
   }
+
+  // Called outside try/catch so Next.js handles the navigation correctly.
+  // Previously this was inside try/catch and the thrown redirect was swallowed
+  // because err.message is "" (not "NEXT_REDIRECT") in Next.js 15/16.
+  redirect(`/sessions/${sessionId}`);
 }

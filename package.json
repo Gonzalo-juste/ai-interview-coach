@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:pipeline": "tsx --env-file=.env.local scripts/test-pipeline.ts"
+    "test:pipeline": "tsx --env-file=.env.local scripts/test-pipeline.ts",
+    "test:db": "tsx --env-file=.env.local scripts/test-supabase-insert.ts",
+    "create:test-user": "tsx --env-file=.env.local scripts/create-test-user.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.2",
