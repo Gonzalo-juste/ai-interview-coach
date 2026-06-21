@@ -14,7 +14,30 @@
       "PowerShell(npm run *)",
       "PowerShell(Get-Process *)",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "PowerShell(gh repo *)",
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/new-session\" -UseBasicParsing -TimeoutSec 30; \"HTTP $\\($r.StatusCode\\)\" } catch { \"Error: $_\" })",
+      "Bash(git push *)",
+      "Bash(curl -s -o - -w \"\\\\nHTTP %{http_code}\" -X POST http://localhost:3000/api/extract-cv)",
+      "Bash(curl -s -o - -w '\\\\nHTTP %{http_code}' -X POST http://localhost:3000/api/extract-cv -F 'file=@/dev/null;filename=cv.txt;type=text/plain')",
+      "Bash(curl -s -o - -w '\\\\nHTTP %{http_code}' -X POST http://localhost:3000/api/extract-cv -F 'file=@/dev/null;filename=cv.pdf;type=application/pdf')",
+      "Bash(echo \"This is a plain text file\")",
+      "Bash(printf '%PDF-1.4 this is not a real pdf')",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST http://localhost:3000/api/extract-cv)",
+      "Bash(curl -s -w '\\\\nHTTP %{http_code}' -X POST http://localhost:3000/api/extract-cv -F 'file=@/tmp/cv_test.txt;type=text/plain')",
+      "Bash(curl -s -w '\\\\nHTTP %{http_code}' -X POST http://localhost:3000/api/extract-cv -F 'file=@/tmp/cv_broken.pdf;type=application/pdf')",
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); Set-Location \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; node scripts/test-extract-cv-api.mjs 2>&1)",
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); Set-Location \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx tsx --env-file=.env.local scripts/test-supabase-insert.ts 2>&1)",
+      "PowerShell(npm test *)",
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); Set-Location \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx tsc --noEmit 2>&1)",
+      "Bash(npm test *)",
+      "Bash(npx vitest *)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; & node node_modules\\\\.bin\\\\vitest run --reporter=verbose 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; & \"C:\\\\Program Files\\\\nodejs\\\\npx.cmd\" vitest run --reporter=verbose 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx.cmd supabase db push 2>&1)",
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; & \"C:\\\\Program Files\\\\nodejs\\\\npx.cmd\" vitest run --reporter=verbose tests/feedback-pipeline.test.ts 2>&1)"
     ]
   }
 }

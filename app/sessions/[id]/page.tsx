@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function SessionPage({
   params,
@@ -21,9 +22,11 @@ export default async function SessionPage({
     .single();
 
   if (!session) redirect("/new-session");
+  if (session.status === "completed") redirect(`/interview/${session.id}/complete`);
 
-  const extraction = (session.persona_config as { extraction?: { role_title?: string } } | null)
-    ?.extraction;
+  const extraction = (
+    session.persona_config as { extraction?: { role_title?: string } } | null
+  )?.extraction;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -48,17 +51,28 @@ export default async function SessionPage({
           <h1 className="text-2xl font-bold text-gray-900">Session Ready</h1>
           {extraction?.role_title && (
             <p className="mt-1 text-gray-600">
-              {extraction.role_title} ·{" "}
-              <span className="capitalize">{session.difficulty_archetype}</span> interviewer
+              {extraction.role_title} &middot;{" "}
+              <span className="capitalize">{session.difficulty_archetype}</span>{" "}
+              interviewer
             </p>
           )}
 
           <p className="mt-6 text-sm text-gray-500">
-            The voice interview loop is coming in Phase 3. Your session has been saved
-            and the interviewer persona is ready.
+            Your interviewer persona has been configured. Press the button below
+            when you&apos;re ready — make sure you&apos;re in a quiet place with a
+            working microphone.
           </p>
 
-          <p className="mt-2 text-xs text-gray-400">Session ID: {session.id}</p>
+          <div className="mt-8">
+            <Link
+              href={`/interview/${session.id}`}
+              className="inline-block rounded-md bg-gray-900 px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-700"
+            >
+              Start Interview
+            </Link>
+          </div>
+
+          <p className="mt-6 text-xs text-gray-400">Session ID: {session.id}</p>
         </div>
       </div>
     </div>
