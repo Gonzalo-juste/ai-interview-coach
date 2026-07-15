@@ -22,7 +22,7 @@ export default async function SessionPage({
     .single();
 
   if (!session) redirect("/new-session");
-  if (session.status === "completed") redirect(`/interview/${session.id}/complete`);
+  if (session.status === "completed") redirect(`/interview/${id}/complete`);
 
   const extraction = (
     session.persona_config as { extraction?: { role_title?: string } } | null

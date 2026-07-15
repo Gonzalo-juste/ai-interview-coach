@@ -31,20 +31,28 @@ Next.js (App Router) · Tailwind + shadcn/ui · Supabase (db / auth / storage) �
 | `users` | auth id, credit_balance |
 | `sessions` | user_id, jd_text, cv_text, company_research, persona_config, difficulty_archetype, status |
 | `transcripts` | session_id, turns (JSONB: role, text, audio_ref, timestamp) |
-| `feedback_reports` | session_id, star_scores, story_gaps, cv_gaps, rewrites, cultural_notes, share_token |
+| `feedback_reports` | session_id, status, story_gaps, cv_gaps, readiness_verdict, top_priority, strength_evidence, interviewer_pressure_reframe, star_method_note, language_patterns, role_fit_verdict, reassurance_note, company_research_suggestion, share_token |
+| `answer_feedback` | session_id, transcript_id, turn_index, star_* scores, rewrite, cultural_note |
 | `mistake_patterns` | user_id, pattern_type, count, last_seen_session_id |
 | `transactions` | user_id, credits_delta, type (purchase/spend), session_id |
 
-## Phase 1 Checklist
+## Phase Checklist
 
 - [x] Next.js + Tailwind + shadcn scaffolded
 - [x] Supabase schema migration written (`supabase/migrations/`)
 - [x] Supabase auth wired (SSR client + middleware)
-- [ ] JD + CV input UI
-- [ ] LLM extraction pipeline
-- [ ] Company research + caching
-- [ ] Persona generation
-- [ ] Voice interview loop
-- [ ] Feedback engine
-- [ ] Readiness report + share link
-- [ ] Credits + Stripe
+- [x] JD + CV input UI
+- [x] LLM extraction pipeline
+- [x] Company research + caching
+- [x] Persona generation
+- [x] Voice interview loop
+- [x] Feedback engine (STAR scoring, story gaps, CV gaps, rewrites, 9-field session analysis, tone mode)
+- [ ] Readiness report + share link — `share_token` column exists, no share UI or route built yet — Phase 6
+- [ ] Credits + Stripe — `transactions` table exists, no Stripe integration yet — Phase 7
+
+## Structural Gaps (not blocking MVP, tracked here)
+
+- `mistake_patterns` — schema exists, no code writes to it yet — Phase 5
+- `share_token` on `feedback_reports` — column exists, no share UI or public route built — Phase 6
+- `transactions` / Stripe — table exists, credits field on `users` exists, no Stripe integration — Phase 7
+- Supabase CLI not linked — all migrations must be applied manually via the SQL editor (no `supabase db push`)

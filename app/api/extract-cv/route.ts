@@ -27,10 +27,12 @@ export async function POST(req: NextRequest) {
 
   if (mime === "application/pdf" || name.endsWith(".pdf")) {
     try {
-      // Dynamic import keeps pdf-parse out of the bundle (serverExternalPackages handles the rest)
-      const pdfParse = (await import("pdf-parse")).default;
-      const result = await pdfParse(buffer);
-      raw = result.text;
+      // pdf-parse v2.x: class-based API, no default export.
+      // LoadParameters.data accepts Buffer (extends Uint8Array / TypedArray).
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: buffer });
+      const textResult = await parser.getText();
+      raw = textResult.text;
     } catch {
       return err(
         "Could not extract text from this PDF. It may be password-protected, image-only (scanned), or corrupted. Please paste your CV as text instead.",

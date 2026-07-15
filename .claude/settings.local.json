@@ -37,7 +37,25 @@
       "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; & node node_modules\\\\.bin\\\\vitest run --reporter=verbose 2>&1)",
       "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; & \"C:\\\\Program Files\\\\nodejs\\\\npx.cmd\" vitest run --reporter=verbose 2>&1)",
       "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx.cmd supabase db push 2>&1)",
-      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; & \"C:\\\\Program Files\\\\nodejs\\\\npx.cmd\" vitest run --reporter=verbose tests/feedback-pipeline.test.ts 2>&1)"
+      "PowerShell($env:PATH = \"C:\\\\Program Files\\\\nodejs;\" + $env:PATH; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; & \"C:\\\\Program Files\\\\nodejs\\\\npx.cmd\" vitest run --reporter=verbose tests/feedback-pipeline.test.ts 2>&1)",
+      "Bash(npx tsc *)",
+      "PowerShell($env:Path += \";C:\\\\Program Files\\\\nodejs\"; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx tsc --noEmit 2>&1 | Select-Object -First 60)",
+      "PowerShell($env:Path += \";C:\\\\Program Files\\\\nodejs\"; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx tsc --noEmit 2>&1 | Select-Object -First 40)",
+      "PowerShell($env:Path += \";C:\\\\Program Files\\\\nodejs\"; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx tsc --noEmit 2>&1 | Select-Object -First 50)",
+      "PowerShell($env:Path += \";C:\\\\Program Files\\\\nodejs\"; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx tsc --noEmit 2>&1 | Select-Object -First 30)",
+      "PowerShell($env:Path += \";C:\\\\Program Files\\\\nodejs\"; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx vitest run 2>&1 | Select-Object -Last 30)",
+      "PowerShell($env:Path += \";C:\\\\Program Files\\\\nodejs\"; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx vitest run 2>&1)",
+      "Bash(grep -rn \"OPENAI_API_KEY\\\\|GROQ_API_KEY\\\\|ANTHROPIC_API_KEY\\\\|TAVILY_API_KEY\\\\|SUPABASE\" .env.local.example)",
+      "Bash(cat .env.local.example)",
+      "Bash(node -e \"const m = require\\('pdf-parse'\\); console.log\\(typeof m, typeof m.default, Object.keys\\(m\\).slice\\(0,10\\)\\)\")",
+      "PowerShell($env:Path += \";C:\\\\Program Files\\\\nodejs\"; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; node -e \"const m = require\\('pdf-parse'\\); console.log\\('type:', typeof m, '| has default:', 'default' in m, '| keys:', Object.keys\\(m\\).slice\\(0,8\\).join\\(','\\)\\)\" 2>&1)",
+      "Bash(head -20 node_modules/pdf-parse/dist/pdf-parse/esm/index.js)",
+      "Bash(head -20 node_modules/pdf-parse/dist/pdf-parse/esm/index.mjs)",
+      "Bash(node -p \"require\\('./node_modules/pdf-parse/package.json'\\).version\")",
+      "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\); print\\('version:', p.get\\('version'\\)\\); print\\('exports:', json.dumps\\(p.get\\('exports','none'\\), indent=2\\)\\); print\\('main:', p.get\\('main','none'\\)\\)\")",
+      "PowerShell($env:Path += \";C:\\\\Program Files\\\\nodejs\"; $p = Get-Content \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\\\\node_modules\\\\pdf-parse\\\\package.json\" | ConvertFrom-Json; Write-Output \"version: $\\($p.version\\)\"; Write-Output \"main: $\\($p.main\\)\"; Write-Output \"exports:\"; $p.exports | ConvertTo-Json -Depth 5)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('exports:', json.dumps\\(d.get\\('exports', 'none'\\), indent=2\\)[:800]\\); print\\('main:', d.get\\('main','none'\\)\\); print\\('version:', d.get\\('version','?'\\)\\)\")",
+      "PowerShell($env:PATH = $env:PATH + \";C:\\\\Program Files\\\\nodejs;C:\\\\Users\\\\joaquin\\\\AppData\\\\Roaming\\\\npm\"; cd \"C:\\\\Users\\\\joaquin\\\\Nueva carpeta\"; npx vitest run 2>&1 | Select-Object -Last 30)"
     ]
   }
 }

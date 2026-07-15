@@ -8,10 +8,9 @@
 --    - error_message: human-readable failure reason when status='failed'
 --    - session_id UNIQUE: required for upsert idempotency in the pipeline
 --
---    Existing columns retained unchanged:
---      star_scores, rewrites, cultural_notes (now redundant — per-answer
---      data moves to answer_feedback, but we keep these to avoid a
---      destructive migration on existing rows)
+--    NOTE: star_scores, rewrites, and cultural_notes from migration 001
+--    are superseded by the answer_feedback table created below. They are
+--    dropped in migration 006_cleanup_dead_columns.sql.
 
 ALTER TABLE public.feedback_reports
   ADD COLUMN status        TEXT NOT NULL DEFAULT 'pending'
