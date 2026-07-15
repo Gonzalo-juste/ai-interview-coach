@@ -9,13 +9,13 @@ export interface CompanyResearch {
   fetched_at: string;
 }
 
-async function tavilySearch(companyName: string): Promise<string> {
+async function tavilySearch(query: string): Promise<string> {
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       api_key: process.env.TAVILY_API_KEY,
-      query: `${companyName} company culture values interview process work environment 2024 2025`,
+      query,
       search_depth: "basic",
       max_results: 5,
       include_answer: true,
@@ -39,10 +39,20 @@ async function tavilySearch(companyName: string): Promise<string> {
   return parts.join("\n\n");
 }
 
+// Used by the Phase 4 feedback pipeline to fetch company product/technology
+// developments that are concrete enough to surface as pre-interview research tips.
+export async function searchCompanyProductUpdates(companyName: string): Promise<string> {
+  return tavilySearch(
+    `${companyName} new products technology development initiatives announcements 2025`
+  );
+}
+
 export async function researchCompany(
   companyName: string
 ): Promise<CompanyResearch> {
-  const rawContent = await tavilySearch(companyName);
+  const rawContent = await tavilySearch(
+    `${companyName} company culture values interview process work environment 2024 2025`
+  );
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 

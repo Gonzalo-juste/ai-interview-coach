@@ -28,21 +28,39 @@ export async function GET(
     return NextResponse.json({ error: "Session not found" }, { status: 404 });
   }
 
-  // Return 'pending' when the feedback_reports row does not exist yet
-  // (i.e. the pipeline has not been triggered, or the session has not ended).
-  const { data: report } = await supabase
+  // Return 'pending' when the feedback_reports row does not exist yet.
+  // Cast required: feedback_reports columns added in migrations 004/005 are not
+  // in the generated Supabase types file (project is not linked to the CLI).
+  interface FeedbackReportRow {
+    status: string;
+    story_gaps: unknown;
+    cv_gaps: unknown;
+    error_message: string | null;
+    updated_at: string;
+    readiness_verdict: string | null;
+    top_priority: string | null;
+    role_fit_verdict: unknown;
+    reassurance_note: string | null;
+    strength_evidence: unknown;
+    interviewer_pressure_reframe: unknown;
+    star_method_note: string | null;
+    language_patterns: unknown;
+    company_research_suggestion: unknown;
+  }
+  const { data: rawReport } = await supabase
     .from("feedback_reports")
-    .select("status, story_gaps, cv_gaps, error_message, updated_at")
+    .select(
+      "status, story_gaps, cv_gaps, error_message, updated_at, " +
+        "readiness_verdict, top_priority, role_fit_verdict, reassurance_note, " +
+        "strength_evidence, interviewer_pressure_reframe, star_method_note, " +
+        "language_patterns, company_research_suggestion"
+    )
     .eq("session_id", sessionId)
     .maybeSingle();
+  const report = rawReport as unknown as FeedbackReportRow | null;
 
   if (!report) {
-    return NextResponse.json({
-      status: "pending",
-      story_gaps: null,
-      cv_gaps: null,
-      answers: [],
-    });
+    return NextResponse.json({ status: "pending", answers: [] });
   }
 
   const { data: answers } = await supabase
@@ -61,6 +79,15 @@ export async function GET(
     cv_gaps: report.cv_gaps,
     error_message: report.error_message ?? null,
     updated_at: report.updated_at,
+    readiness_verdict: report.readiness_verdict ?? null,
+    top_priority: report.top_priority ?? null,
+    role_fit_verdict: report.role_fit_verdict ?? null,
+    reassurance_note: report.reassurance_note ?? null,
+    strength_evidence: report.strength_evidence ?? [],
+    interviewer_pressure_reframe: report.interviewer_pressure_reframe ?? [],
+    star_method_note: report.star_method_note ?? null,
+    language_patterns: report.language_patterns ?? [],
+    company_research_suggestion: report.company_research_suggestion ?? null,
     answers: answers ?? [],
   });
 }

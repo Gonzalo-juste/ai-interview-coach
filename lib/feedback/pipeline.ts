@@ -3,12 +3,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { detectCategory, type QuestionCategory } from "@/lib/interview/categories";
 import type { Turn } from "@/lib/interview/transcript";
+import { searchCompanyProductUpdates } from "@/lib/llm/research";
 import {
   BEHAVIORAL_TOOL,
   NON_BEHAVIORAL_TOOL,
   SESSION_ANALYSIS_TOOL,
+  COMPANY_RESEARCH_SUGGESTION_TOOL,
   buildAnswerSystemPrompt,
   buildSessionSystemPrompt,
+  buildCompanyResearchPrompt,
 } from "./prompts";
 
 // ---------------------------------------------------------------------------
@@ -31,6 +34,12 @@ export interface PerAnswerResult {
   star_quality_score: number | null;
   rewrite: string;
   cultural_note: string | null;
+}
+
+export interface CompanyResearchSuggestion {
+  searched: boolean;
+  summary: string;
+  suggestions: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -147,8 +156,78 @@ async function processAnswer(
 }
 
 // ---------------------------------------------------------------------------
-// Main pipeline — called after a session is marked completed.
-// Clients are injected so tests can substitute mocks.
+// Company research suggestion (non-blocking, cached by company name)
+// ---------------------------------------------------------------------------
+
+async function tryGetCompanyResearchSuggestion(
+  companyName: string | null,
+  sessionId: string,
+  supabase: SupabaseClient,
+  anthropic: Anthropic
+): Promise<CompanyResearchSuggestion | null> {
+  if (!companyName) return null;
+
+  try {
+    // Check cache: look for any other session with the same company that already
+    // has a company_research_suggestion in its feedback_reports row.
+    const { data: companySessions } = await supabase
+      .from("sessions")
+      .select("id")
+      .filter("company_research->>company_name", "eq", companyName)
+      .not("company_research", "is", null);
+
+    const otherSessionIds = (companySessions ?? [])
+      .map((s: { id: string }) => s.id)
+      .filter((id: string) => id !== sessionId);
+
+    if (otherSessionIds.length > 0) {
+      const { data: cached } = await supabase
+        .from("feedback_reports")
+        .select("company_research_suggestion")
+        .in("session_id", otherSessionIds)
+        .not("company_research_suggestion", "is", null)
+        .eq("status", "ready")
+        .limit(1)
+        .maybeSingle();
+
+      if (cached?.company_research_suggestion) {
+        console.log(`[feedback] company research cache hit for "${companyName}"`);
+        return cached.company_research_suggestion as CompanyResearchSuggestion;
+      }
+    }
+
+    // Cache miss — do a fresh Tavily search
+    console.log(`[feedback] company research cache miss — searching for "${companyName}"`);
+    const rawContent = await searchCompanyProductUpdates(companyName);
+
+    const msg = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 600,
+      tools: [COMPANY_RESEARCH_SUGGESTION_TOOL],
+      tool_choice: { type: "any" } as const,
+      messages: [
+        {
+          role: "user",
+          content: buildCompanyResearchPrompt({ companyName, rawContent }),
+        },
+      ],
+    });
+
+    const toolBlock = msg.content.find(
+      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+    );
+    if (!toolBlock) return null;
+
+    const input = toolBlock.input as { summary: string; suggestions: string[] };
+    return { searched: true, summary: input.summary, suggestions: input.suggestions };
+  } catch (err) {
+    console.error(`[feedback] company research suggestion failed (non-fatal):`, err);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main pipeline
 // ---------------------------------------------------------------------------
 
 export async function generateFeedback(
@@ -174,16 +253,21 @@ export async function generateFeedback(
   }
 
   try {
-    // Load session (jd_text + cv_text needed for aggregation)
+    // Load session — now also fetching difficulty_archetype and company_research
     const { data: session, error: sessionErr } = await supabase
       .from("sessions")
-      .select("jd_text, cv_text")
+      .select("jd_text, cv_text, difficulty_archetype, company_research")
       .eq("id", sessionId)
       .single();
 
     if (sessionErr || !session) {
       throw new Error(`Session ${sessionId} not found: ${sessionErr?.message}`);
     }
+
+    const archetype = (session.difficulty_archetype as string) ?? "neutral";
+    const companyName =
+      (session.company_research as { company_name?: string } | null)?.company_name ??
+      null;
 
     // Load transcript (single row per session per migration 002)
     const { data: transcript, error: transcriptErr } = await supabase
@@ -203,7 +287,7 @@ export async function generateFeedback(
 
     console.log(
       `[feedback] session=${sessionId} answers=${contexts.length} ` +
-        `behavioral=${contexts.filter((c) => c.isBehavioral).length}`
+        `behavioral=${contexts.filter((c) => c.isBehavioral).length} archetype=${archetype}`
     );
 
     // Step 2 — fan-out: all per-answer calls in parallel, upsert as each resolves
@@ -250,7 +334,9 @@ export async function generateFeedback(
       })
     );
 
-    const failures = outcomes.filter((o): o is Extract<AnswerOutcome, { ok: false }> => !o.ok);
+    const failures = outcomes.filter(
+      (o): o is Extract<AnswerOutcome, { ok: false }> => !o.ok
+    );
     if (failures.length > 0) {
       throw new Error(
         `${failures.length} of ${contexts.length} answer(s) failed to process ` +
@@ -258,25 +344,26 @@ export async function generateFeedback(
       );
     }
 
-    const successResults = outcomes
-      .filter((o): o is Extract<AnswerOutcome, { ok: true }> => o.ok)
-      .map((o) => o.result);
-
-    // Step 3 — fan-in: single aggregation call with full context
-    const aggregationMsg = await callWithRetry(() =>
-      anthropic.messages.create({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 2000,
-        system: buildSessionSystemPrompt({
-          jdText: session.jd_text ?? "",
-          cvText: session.cv_text ?? "",
-          turns,
-        }),
-        messages: [{ role: "user", content: "Analyze this interview session." }],
-        tools: [SESSION_ANALYSIS_TOOL],
-        tool_choice: { type: "any" } as const,
-      })
-    );
+    // Step 3 — fan-in: session analysis + company research run in parallel.
+    // Company research failure is non-fatal (it returns null on error internally).
+    const [aggregationMsg, companySuggestion] = await Promise.all([
+      callWithRetry(() =>
+        anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 4000,
+          system: buildSessionSystemPrompt({
+            jdText: session.jd_text ?? "",
+            cvText: session.cv_text ?? "",
+            turns,
+            archetype,
+          }),
+          messages: [{ role: "user", content: "Analyze this interview session." }],
+          tools: [SESSION_ANALYSIS_TOOL],
+          tool_choice: { type: "any" } as const,
+        })
+      ),
+      tryGetCompanyResearchSuggestion(companyName, sessionId, supabase, anthropic),
+    ]);
 
     const aggregationBlock = aggregationMsg.content.find(
       (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
@@ -286,22 +373,40 @@ export async function generateFeedback(
     }
 
     const agg = aggregationBlock.input as {
+      readiness_verdict: string;
+      top_priority: string;
       story_gaps: unknown[];
       cv_gaps: unknown[];
+      role_fit_verdict: unknown;
+      reassurance_note: string;
+      strength_evidence?: unknown[];
+      interviewer_pressure_reframe?: unknown[];
+      star_method_note?: string;
+      language_patterns?: unknown[];
     };
 
     console.log(
       `[feedback] aggregation complete session=${sessionId} ` +
-        `story_gaps=${agg.story_gaps.length} cv_gaps=${agg.cv_gaps.length}`
+        `story_gaps=${agg.story_gaps.length} cv_gaps=${agg.cv_gaps.length} ` +
+        `company_research=${companySuggestion ? "yes" : "null"}`
     );
 
-    // Step 4 — write results and mark ready
+    // Step 4 — write all results and mark ready
     const { error: readyErr } = await supabase
       .from("feedback_reports")
       .update({
         status: "ready",
         story_gaps: agg.story_gaps,
         cv_gaps: agg.cv_gaps,
+        readiness_verdict: agg.readiness_verdict,
+        top_priority: agg.top_priority,
+        role_fit_verdict: agg.role_fit_verdict,
+        reassurance_note: agg.reassurance_note,
+        strength_evidence: agg.strength_evidence ?? [],
+        interviewer_pressure_reframe: agg.interviewer_pressure_reframe ?? [],
+        star_method_note: agg.star_method_note ?? null,
+        language_patterns: agg.language_patterns ?? [],
+        company_research_suggestion: companySuggestion,
       })
       .eq("session_id", sessionId);
 
@@ -310,9 +415,7 @@ export async function generateFeedback(
     }
 
     console.log(`[feedback] pipeline complete session=${sessionId}`);
-    void successResults; // consumed above — reference to avoid unused-var lint
   } catch (err) {
-    // Step 5 — error path: every code path terminates in ready or failed
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[feedback] pipeline failed session=${sessionId}:`, err);
 
